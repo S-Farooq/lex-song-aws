@@ -326,7 +326,7 @@ def submit():
             
             
             reco_display = get_mrkup_from_df(reco_df,to_display_amount=10)
-            num_to_graph=7
+            num_to_graph=10
             full_reco_df = full_reco_df.head(num_to_graph)
             full_reco_df = full_reco_df[["My Songs"] +x_names]
             full_reco_df.loc[len(full_reco_df.index)] = [usong.upper()+"-"+uartist.upper()]+user_scaled_data[0,:].tolist()

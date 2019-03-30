@@ -2,6 +2,7 @@ from time import time
 import numpy as np
 
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
 from sklearn.feature_selection import VarianceThreshold
 
 from sklearn.metrics.pairwise import euclidean_distances
@@ -39,6 +40,44 @@ import pandas as pd
 sid = SentimentIntensityAnalyzer()
 punc = re.compile('\p')
 
+
+
+
+def get_normalized_and_split_data(all_data,x_names,split=0.2,by_artist=False):
+
+    if by_artist:
+        artists = all_data['artist'].unique()
+        X_train = all_data[all_data['artist'].isin(artists[:-2])][x_names].values
+        y_train = list(all_data[all_data['artist'].isin(artists[:-2])]['labels'])
+
+        X_test = all_data[all_data['artist'].isin(artists[-2:])][x_names].values
+        y_test = list(all_data[all_data['artist'].isin(artists[-2:])]['labels'])
+    else:
+        y = list(all_data['labels'])
+        X = all_data[x_names].values
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=split, random_state=3)
+    
+    scaler = StandardScaler()
+    X_train =scaler.fit_transform(X_train)
+    if len(y_test)>0:
+        X_test = scaler.transform(X_test)
+
+    to_drop=[]
+    for i in range(X_train.shape[0]):
+        for j in range(X_train.shape[1]):
+            if abs(X_train[i][j])>5:
+                to_drop.append(i)
+
+    to_drop=list(set(to_drop))
+
+    X_train = np.delete(X_train, to_drop, axis=0)
+    y_train = np.delete(y_train, to_drop, axis=0)
+
+    n_samples, n_features = X_train.shape
+
+    return X_train, X_test, y_train, y_test, scaler
+    
 def get_euc_dist(set1,set2,set1_y,set2_y,feature_names,n_top=10):
     ed_df = pd.DataFrame()
     ed = euclidean_distances(set1, set2)
@@ -53,7 +92,7 @@ def get_euc_dist(set1,set2,set1_y,set2_y,feature_names,n_top=10):
         df_feat = pd.DataFrame(set2, columns=feature_names)
         df = pd.concat([df, df_feat], axis=1)
         ed_df = ed_df.append(df)
-        
+
     cols = ['from','to','distance'] + feature_names
     ed_df = ed_df[cols]
     ed_df = ed_df.sort_values(['from','distance'],ascending=True)

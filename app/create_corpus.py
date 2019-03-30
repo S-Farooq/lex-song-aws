@@ -41,44 +41,8 @@ import pandas as pd
 sid = SentimentIntensityAnalyzer()
 punc = re.compile('\p')
 
-from util_fxns import get_song_data, ie_preprocess, get_euc_dist, tokenize_song
+from util_fxns import get_song_data, ie_preprocess, get_euc_dist, tokenize_song, get_normalized_and_split_data
 
-
-
-def get_normalized_and_split_data(all_data,x_names,split=0.2,by_artist=False):
-
-    if by_artist:
-        artists = all_data['artist'].unique()
-        X_train = all_data[all_data['artist'].isin(artists[:-2])][x_names].values
-        y_train = list(all_data[all_data['artist'].isin(artists[:-2])]['labels'])
-
-        X_test = all_data[all_data['artist'].isin(artists[-2:])][x_names].values
-        y_test = list(all_data[all_data['artist'].isin(artists[-2:])]['labels'])
-    else:
-        y = list(all_data['labels'])
-        X = all_data[x_names].values
-
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=split, random_state=3)
-    
-    scaler = StandardScaler()
-    X_train =scaler.fit_transform(X_train)
-    if len(y_test)>0:
-        X_test = scaler.transform(X_test)
-
-    to_drop=[]
-    for i in range(X_train.shape[0]):
-        for j in range(X_train.shape[1]):
-            if abs(X_train[i][j])>5:
-                to_drop.append(i)
-
-    to_drop=list(set(to_drop))
-
-    X_train = np.delete(X_train, to_drop, axis=0)
-    y_train = np.delete(y_train, to_drop, axis=0)
-
-    n_samples, n_features = X_train.shape
-
-    return X_train, X_test, y_train, y_test, scaler
 
 def tokenize_corpus(lyric_corpus_file, tokenized_corpus_file="tokenized_lyric_corpus.p"):
     try:
