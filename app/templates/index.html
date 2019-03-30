@@ -102,7 +102,7 @@
 					<input name='user' type="user" class="form-control" id="user">
 				</div>
 
-		</div><br>
+		</div>
 
 		<div class="col-md-4">
 			<div class="input-group mb-2 mb-sm-0">
@@ -115,14 +115,13 @@
 			</div>
 
 	 </div>
-	</div>
+	</div><br>
 
-			<div class="form-row align-items-center">
+			<div class="row align-items-center">
 			 <div class="col-md-12">
 		      <button type="submit" class="btn btn-primary btn-lg js-scroll-trigger" name="btn" value="search_custom" onclick="showLoad();">Submit</button>
 		      </div>
 			 </div>
-			</div>
 		</form>
 		</div>
 		</div>
@@ -309,7 +308,7 @@
 				      		backgroundColor: 'rgba({{ colors[s] }},0.2)',
 				      		borderColor: 'rgb({{ colors[s] }})',
 				      		pointBorderColor: '#fff',
-				         data : [{% for item in user_song_values[s][1:8] %}
+				         data : [{% for item in user_song_values[s][1:] %}
 				                      {{item}},
 				                    {% endfor %}]
 				      },
