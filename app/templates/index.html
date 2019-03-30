@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+  	<!-- Global site tag (gtag.js) - Google Analytics -->
+	<script async src="https://www.googletagmanager.com/gtag/js?id=UA-110962916-2"></script>
+	<script>
+	  window.dataLayer = window.dataLayer || [];
+	  function gtag(){dataLayer.push(arguments);}
+	  gtag('js', new Date());
+
+	  gtag('config', 'UA-110962916-2');
+	</script>
+
+	<!-- Bootstrap core JavaScript -->
+    <script src="{{ url_for('static', filename='vendor/jquery/jquery.min.js') }}"></script>
+    
+    <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+
+    <!-- Plugin JavaScript -->
+    <script src="{{ url_for('static', filename='vendor/jquery-easing/jquery.easing.min.js') }}""></script>
+
+    <!-- Custom scripts for this template -->
+    <script src='{{ url_for("static", filename="js/stylish-portfolio.min.js") }}'></script>
+	<script src="{{ url_for('static', filename='js/loadingoverlay.min.js') }}"></script>
+    
+
+    <script>
+
+	  // Show full page LoadingOverlay
+		
+	  function showLoad() {
+		  // Show full page LoadingOverlay
+			$.LoadingOverlay("show");
+		};
+		</script>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1.0"/>
+    <!-- <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"> -->
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Lex-Song-Reco</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="{{ url_for('static', filename="vendor/bootstrap/css/bootstrap.min.css") }}"" rel="stylesheet">
+
+    <!-- Custom Fonts -->
+    <link href="{{ url_for('static', filename="vendor/font-awesome/css/font-awesome.min.css") }}" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700,300italic,400italic,700italic" rel="stylesheet" type="text/css">
+    <link href="{{ url_for('static', filename="vendor/simple-line-icons/css/simple-line-icons.css") }}" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename="css/stylish-portfolio.css") }}" rel="stylesheet">
+
+  </head>
+
+  <body id="page-top">
+    
+	<!-- <div class="loader" style="display:none;"></div> -->
+    <!-- Header -->
+    <header class="masthead d-flex">
+      <div class="container text-center my-auto">
+      <div class="row">
+      	<div class="col-lg-12">
+
+      	{% if display_alert %}
+      	<div class="alert alert-danger" style="display:{{ display_alert }}">
+		    <strong>Oops! Error:</strong> {{ err_msg }}
+	    </div>
+		{% endif %}
+       <h2>A Natural Language Processing Approach to Song Recommendations</h2>
+       <h5>I will recommend you songs lexically close to any custom text (lyrics, poems, fiction, etc.)<h5>
+      
+      	</div>
+      	</div>
+      	
+		<div class="row">
+      	<div class="col-lg-12">
+      	<form method="POST">
+		  <div class="form-row align-items-center">
+		  <div class="col-md-12">
+			    <textarea name="custom_text" maxlength="500" class="form-control" id="custom_text" rows="4" placeholder="Please enter 100 to 500 characters."></textarea>
+			 
+			 </div>
+			 </div><br>
+
+			 <div class="row">
+				<div class="col-md-4">
+
+					<div class="input-group mb-2 mb-sm-0">
+							<div class="input-group-addon">MixTape Title</div>
+							<input name="title" type="title" class="form-control" id="title">
+						</div>
+
+		</div>
+
+		<div class="col-md-4">
+			<div class="input-group mb-2 mb-sm-0">
+					<div class="input-group-addon">Your Name</div>
+					<input name='user' type="user" class="form-control" id="user">
+				</div>
+
+		</div><br>
+
+		<div class="col-md-4">
+			<div class="input-group mb-2 mb-sm-0">
+				<div class="input-group-addon">Playlists</div>
+					<select name="dbase" class="form-control" id="dbase">
+					{% for x in corpus_dict.keys() %}
+				<option value="{{ x }}"{% if loop.first %} SELECTED{% endif %}>{{ x }}</option>
+				{% endfor %}
+				</select>
+			</div>
+
+	 </div>
+	</div>
+
+			<div class="form-row align-items-center">
+			 <div class="col-md-12">
+		      <button type="submit" class="btn btn-primary btn-lg js-scroll-trigger" name="btn" value="search_custom" onclick="showLoad();">Submit</button>
+		      </div>
+			 </div>
+			</div>
+		</form>
+		</div>
+		</div>
+
+      </div>
+      <div class="overlay"></div>
+    </header>
+
+    {% if display %}
+    <!-- About -->
+    <section class="content-section bg-light" id="recos" style="display:{{ display }}">
+    {% if scroll %}
+	<script>
+		{% if callback_playlist %}
+	    document.getElementById('spotify_show').scrollIntoView();
+	    document.location.hash = '#' + 'spotify_show';
+	    {% else %}
+	    document.getElementById('{{ scroll }}').scrollIntoView();
+	    document.location.hash = '#' + '{{ scroll }}';
+		{% endif %}
+	</script>
+	{% endif %}
+      <div class="container text-center">
+        <div class="row">
+          <div class="col-lg-10 mx-auto text-center">
+          <h2>Your Mixtape: {{ song_name }} ({{ artist_name }})</h2>
+           {{ reco_df }}
+          </div>
+        </div>
+        
+        <div class="row">
+      	<div class="col-lg-10 mx-auto text-center">
+      	{% if not callback_playlist %}
+      	<form method="POST">
+      	
+		  <div class="form-row align-items-center">
+		
+				<div class="col-md-12">
+					<button type="submit" class="btn btn-primary js-scroll-trigger btn-xl" name="btn" value="playlist" onclick="showLoad();">
+						Create A Spotify Playlist!</button>
+
+		    </div>
+		    <div class="col-md-12">
+		      <h6>*Warning: This may fail, Spotify API is still in beta and they keep changing things without notifying...*</h6>
+		      
+		    </div>
+
+		  </div>
+		</form>
+		{% else %}
+		<div class="col-lg-10 mx-auto text-center" id="spotify_show">
+			<h4> Your Spotify Playlist has been created:</h4>
+			<a href="{{ callback_playlist }}" target="_blank">
+			<h3>Your New Lex-Recos Playlist</h3>
+			</a><br>
+			<h5> Search another song!</h5>
+		</div>
+		{% endif %}
+		</div>
+		</div>
+
+      </div>
+    </section>
+    {% endif %}
+
+    {% if features %}
+    <section class="content-section" style="padding: 20px">
+    
+    <div class="container-fluid text-center">
+    	<h1>GRAPHS</h1>
+    	<h6>*1. You can click the song names in legend to toggle its display on graph*</h6>
+    	<h6>*2. If you are on a mobile device, please rotate to landscape view.*</h6>
+    	<br>
+    	<div class="row">
+      		<div class="col-lg-12 mx-auto text-center">
+    			<h4 class="mb-4">Fig 1: Comparing word count and specific lexical features</h4>
+			</div>
+    	</div>
+    	<div class="row">
+      		<div class="col-lg-12 mx-auto text-center">
+	
+    			<canvas id="radar-chart" width="600" height="400"></canvas>
+    			<div class="text-secondary chart-msg"><h6>Please rotate phone to landscape to see charts</h6>
+    		</div>
+		</div>
+    </section>
+
+    <section class="content-section"  style="padding: 25px">
+    
+    <div class="container-fluid text-center">
+		<div class="row">
+      		<div class="col-lg-12 mx-auto text-center">
+    			<h4 class="mb-4">Fig 2: Comparing all lexical features:</h4>
+			</div>
+    	</div>
+    	<div class="row">
+      		<div class="col-lg-12 mx-auto text-center">
+					<canvas id="myChart" width="600" height="400"></canvas>
+					<div class="text-secondary chart-msg"><h6>Please rotate phone to landscape to see charts</h6>
+			</div>
+		</div>
+    </div>
+    </section>
+<!-- 
+    <section class="content-section">
+    <div class="container text-center">
+    
+    	
+    </div>
+    </section>
+ -->
+    <!-- import plugin script -->   
+    <script src="{{ url_for('static', filename='js/Chart.min.js') }}"></script>
+		<script>
+			function getRandomColor() {
+		        var letters = '0123456789ABCDEF'.split('');
+		        var color = '#';
+		        for (var i = 0; i < 6; i++) {
+		            color += letters[Math.floor(Math.random() * 16)];
+		        }
+		        return color;
+		    };
+
+		   var background_colors=[];
+			for (var i = 0, len = 4; i < len; i++) {
+			   background_colors.push(getRandomColor());// I use @Benjamin method here
+			}
+		   // bar chart data
+		   var data = {
+			   labels : [{% for item in features %}
+			                  "{{item}}",
+			              {% endfor %}],
+			   datasets : [
+			   {% for s in range(0,user_song_values|length) %}
+				      {		label: '{{ user_song_values[s][0] }}',
+				      		borderColor: 'rgb({{ colors[s] }})',
+				         data : [{% for item in user_song_values[s][1:] %}
+				                      {{item}},
+				                    {% endfor %}],
+				         borderWidth: 3
+				      },
+				{% endfor %}
+			      ]
+		   };
+
+		   var ctx = document.getElementById("myChart").getContext("2d");
+
+		   var myLineChart = new Chart(ctx, {
+			    type: 'line',
+			    data: data,
+			    options: {
+					responsive: true,
+    				maintainAspectRatio: true,
+			        scales: {
+			            xAxes: [{
+			                ticks: {
+			                    autoSkip: false
+			                }
+			            }],
+			            yAxes: [{
+					      scaleLabel: {
+					        display: true,
+					        labelString: '# of Standard Deviations away from Mean'
+					      }
+					    }]
+			        },
+			        legend: {
+			        	display: true,
+			        	position: 'top'
+			        }
+			    }
+			});
+
+		new Chart(document.getElementById("radar-chart"), {
+		    type: 'radar',
+		    data: {
+		    	labels : [{% for item in features[:7] %}
+			                  "{{item}}",
+			              {% endfor %}],
+			   datasets : [
+			   {% for s in range(0,user_song_values|length) %}
+				      {		label: '{{ user_song_values[s][0] }}',
+				      		fill: true,
+				      		backgroundColor: 'rgba({{ colors[s] }},0.2)',
+				      		borderColor: 'rgb({{ colors[s] }})',
+				      		pointBorderColor: '#fff',
+				         data : [{% for item in user_song_values[s][1:8] %}
+				                      {{item}},
+				                    {% endfor %}]
+				      },
+				{% endfor %}
+			      ]
+		    },
+		    options: {
+		    	responsive: true,
+				maintainAspectRatio: true
+		    }
+		});
+		 
+		 
+		</script>
+	{% endif %}
+	
+
+   <!-- Footer -->
+    <footer class="footer text-center bg-light">
+      <div class="container">
+      <div class="row">
+      <div class="col-lg-10 mx-auto">
+      	<h3 class="text-secondary mb-0">Objectives of the Project</h3>
+					
+				  	<h5 class="mb-3">To provide recommendations that are at a similar lexical and verbosity level of the user’s selection</h5>
+          	<h5 class="mb-3">To visualize the lexical quality of songs and how they relate to other songs</h5>
+          
+      	</div>
+      </div>
+      <div class="row">
+      <div class="col-lg-10 mx-auto text-center">
+        <p class="text-muted small mb-0">Copyright &copy; Shaham Farooq 2019</p>
+      </div>
+      </div>
+     </div>
+    </footer>
+
+    
+    
+
+  </body>
+
+</html>
