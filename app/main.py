@@ -78,7 +78,7 @@ def get_feature_names(x_names):
             features.append(x)
     return features
             
-def get_mrkup_from_df(reco_df,to_display_amount=10):
+def get_mrkup_from_df(reco_df,to_display_amount=10,upper=True):
     reco_mrkup = ["""<table class="table table-hover"><thead><tr>
         <th>{columns}</th></tr></thead><tbody>
       """.format(columns="</th><th>".join(reco_df.columns))]
@@ -87,7 +87,10 @@ def get_mrkup_from_df(reco_df,to_display_amount=10):
         if to_display_amount==0:
             break
         to_display_amount = to_display_amount - 1
-        row = [str(x).upper() for x in row]
+        if upper:
+            row = [str(x).upper() for x in row]
+        else:
+            row = [str(x) for x in row]
         reco_mrkup.append("""<tr>
         <th>{vals}</th></tr>
             """.format(vals="</th><th>".join(row)))
@@ -279,6 +282,31 @@ def main():
     except:
         session.clear()
         return render_template('index.html', corpus_dict=corpus_dict)
+
+@webapp.route('/mixtapes/')
+def mixtapes():
+    mixtapes_df = pd.DataFrame(
+        [
+            ['Test1 (Shaham)'],
+            ['Test 2 (Lino)']
+        ])
+    mixtapes_df.columns = ['Generated Mixtapes']
+    mixtapes_df['Generated Mixtapes'] = mixtapes_df['Generated Mixtapes'].apply(
+        lambda x: 
+        """<form method="POST" action="/mixtapes">
+            <button type="submit" class="btn btn-success btn-sm" name="mbtn" value=2 onclick="showLoad();">
+            {}
+            </button>
+        </form>""".format(x))
+    mixtapes_df = get_mrkup_from_df(mixtapes_df,to_display_amount=100,upper=False)
+    mixtapes_df=Markup(mixtapes_df) 
+
+    return render_template('mixtapes.html', mixtapes_df=mixtapes_df)
+
+@webapp.route('/mixtapes/', methods=['POST'])
+def mixtapes_create():
+    #TODO: lambda event call to get data for specific ID
+    return str(request.form['mbtn'])
 
 @webapp.route('/', methods=['POST', 'GET'])
 def submit():
