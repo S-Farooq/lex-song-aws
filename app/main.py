@@ -285,19 +285,33 @@ def main():
 
 @webapp.route('/mixtapes/')
 def mixtapes():
-    mixtapes_df = pd.DataFrame(
-        [
-            ['Test1 (Shaham)'],
-            ['Test 2 (Lino)']
-        ])
-    mixtapes_df.columns = ['Generated Mixtapes']
-    mixtapes_df['Generated Mixtapes'] = mixtapes_df['Generated Mixtapes'].apply(
+    URL = "https://1yuktf3etj.execute-api.us-east-1.amazonaws.com/prod/playlists"
+
+    get_request = requests.get(URL)
+
+    if get_request.status_code==200:
+        response_data = json.loads(get_request.text)
+        mixtapes = json.loads(response_data['body'])
+         #TODO: error handling
+
+    mixtapes_df = pd.DataFrame(mixtapes)
+    if mixtapes_df.shape[0]==0:
+        return render_template('mixtapes.html', mixtapes_df='N/A')
+
+    mixtapes_df = mixtapes_df.rename(columns={"mixtapeName":'Generated Mixtapes', 'id':'Version'})
+       
+
+    mixtapes_df['Generated Mixtapes'] = mixtapes_df.apply(
         lambda x: 
         """<form method="POST" action="/mixtapes">
-            <button type="submit" class="btn btn-success btn-sm" name="mbtn" value=2 onclick="showLoad();">
-            {}
+            <input type="hidden" name="mixtapeName" value="{mixtapeName}" /> 
+            <input type="hidden" name="id" value={id} /> 
+            <button type="submit" class="btn btn-success btn-sm" 
+            name="mbtn" onclick="showLoad();">
+            {mixtapeName}
             </button>
-        </form>""".format(x))
+        </form>""".format(mixtapeName=x['Generated Mixtapes'],
+        id=x['Version']), axis=1)
     mixtapes_df = get_mrkup_from_df(mixtapes_df,to_display_amount=100,upper=False)
     mixtapes_df=Markup(mixtapes_df) 
 
@@ -305,8 +319,67 @@ def mixtapes():
 
 @webapp.route('/mixtapes/', methods=['POST'])
 def mixtapes_create():
-    #TODO: lambda event call to get data for specific ID
-    return str(request.form['mbtn'])
+
+    body = {
+        "mixtapeName": request.form['mixtapeName'],
+        "id": str(request.form['id'])
+    }
+    
+    fullname = body['mixtapeName'].split("-")
+    if len(fullname)==2:
+        session['usong']=fullname[0]
+        session['uartist']=fullname[1]
+    else:
+        session['usong']=fullname
+        session['uartist']=fullname
+
+    URL = "https://1yuktf3etj.execute-api.us-east-1.amazonaws.com/prod/playlist"
+
+    get_request = requests.get(URL, params=body)
+
+    # return str(get_request.text)
+    if get_request.status_code==200:
+        response_data = get_request.text
+        # response_data = json.loads(response_data)
+    
+    full_reco_df = pd.read_json(str(response_data), orient='split')
+
+    reco_df = full_reco_df[["Rank",'Artist','My Songs','Distance']].copy()
+    reco_df = reco_df[reco_df['Rank']>=0]
+    reco_df = reco_df.rename(columns={'My Songs':"My Song"})
+    reco_df['My Song'] = reco_df['My Song'].apply(lambda x: x.split('-')[0])
+
+    x_names = ['My Songs',
+        'unique_words',
+        'total_words',
+        'lex_div',
+        'unusual_words',
+        'content_frac',
+        'avg_len_words',
+        'compound',
+        'neg',
+        'neu',
+        'pos',
+        'NN',
+        'PR',
+        'RB',
+        'RBR',
+        'RBS',
+        'UH',
+        'VB',
+        'JJ',
+        'JJR',
+        'JJS',
+        'EX']
+
+    full_reco_df = full_reco_df[x_names]
+    
+    
+    session['reco_df']=reco_df.to_json(orient='split')
+    session['user_song_values']=full_reco_df.to_json(orient='split')
+    return get_render_vars()
+
+    # return str(json.dumps(get_request.text))
 
 @webapp.route('/', methods=['POST', 'GET'])
 def submit():
@@ -315,9 +388,6 @@ def submit():
         try:
             session.clear()
             dbase = request.form['dbase']
-
-            csv_file = corpus_dict[dbase]
-            ds = os.path.join(webapp.static_folder, "{csv_file}.csv".format(csv_file=csv_file))
             
             usong, uartist = request.form['title'], request.form['user']
 
@@ -325,41 +395,65 @@ def submit():
             session['uartist']=uartist
 
 
-            user_song_name = usong + " " + uartist
+            user_song_name = usong.upper()+"-"+uartist.upper()
             
             if len(request.form['custom_text'])<100:
                 return render_template('index.html', display_alert="block", corpus_dict=corpus_dict,
                     err_msg="oops, please enter at least 100 or more characters for a valid analysis!")
 
-            #Lambda Function
             test_lyric = get_custom_text_lyric(request.form['custom_text'])
 
-            tokenized_song = tokenize_song(test_lyric)
-            user_data, x_names = get_song_data(tokenized_song)
+            payload = {
+                "lyric": test_lyric,
+                "mixtape_name": user_song_name
+            }
 
-            all_data = pd.read_csv(ds, encoding="utf-8")
+            URL = "https://1yuktf3etj.execute-api.us-east-1.amazonaws.com/prod/lyric"
+            headers = {"Content-Type": "application/json"}
 
-            if len(user_data)==0 or user_data[0]==0.0:
-                return render_template('index.html', display_alert="block", corpus_dict=corpus_dict,
-                    err_msg="oops, seems like the song could not be analyzed correctly...error, contact me :)")
+            post_request = requests.post(URL, json=payload, headers=headers)
+
+            if post_request.status_code==200:
+                response_data = json.loads(post_request.text)
+                response_data = json.loads(response_data['body'])
+            else:
+                raise("problem")
+
+            #Lambda Function
+            # csv_file = corpus_dict[dbase]
+            # ds = os.path.join(webapp.static_folder, "{csv_file}.csv".format(csv_file=csv_file))
+
+            # test_lyric = get_custom_text_lyric(request.form['custom_text'])
+
+            # tokenized_song = tokenize_song(test_lyric)
+            # user_data, x_names = get_song_data(tokenized_song)
+
+            # all_data = pd.read_csv(ds, encoding="utf-8")
+
+            # if len(user_data)==0 or user_data[0]==0.0:
+            #     return render_template('index.html', display_alert="block", corpus_dict=corpus_dict,
+            #         err_msg="oops, seems like the song could not be analyzed correctly...error, contact me :)")
                 
-            user_data = np.array(user_data)
-            user_data = user_data.reshape(1,-1)
-            X_train, X_test, y_train, y_test, scaler= get_normalized_and_split_data(all_data, x_names,split=0.0)
-            user_scaled_data= scaler.transform(user_data)
+            # user_data = np.array(user_data)
+            # user_data = user_data.reshape(1,-1)
+            # X_train, X_test, y_train, y_test, scaler= get_normalized_and_split_data(all_data, x_names,split=0.0)
+            # user_scaled_data= scaler.transform(user_data)
             
-            reco_df, full_reco_df = get_euc_dist(user_scaled_data,X_train,[user_song_name],y_train,x_names,n_top=10)
+            # reco_df, full_reco_df = get_euc_dist(user_scaled_data,X_train,[user_song_name],y_train,x_names,n_top=10)
 
-            session['reco_df']=reco_df.to_json(orient='split')
+            # session['reco_df']=reco_df.to_json(orient='split')
             
             
-            reco_display = get_mrkup_from_df(reco_df,to_display_amount=10)
-            num_to_graph=10
-            full_reco_df = full_reco_df.head(num_to_graph)
-            full_reco_df = full_reco_df[["My Songs"] +x_names]
-            full_reco_df.loc[len(full_reco_df.index)] = [usong.upper()+"-"+uartist.upper()]+user_scaled_data[0,:].tolist()
-            session['user_song_values']=full_reco_df.to_json(orient='split')
+            # reco_display = get_mrkup_from_df(reco_df,to_display_amount=10)
+            # num_to_graph=10
+            # full_reco_df = full_reco_df.head(num_to_graph)
+            # full_reco_df = full_reco_df[["My Songs"] +x_names]
+            # full_reco_df.loc[len(full_reco_df.index)] = [user_song_name]+user_scaled_data[0,:].tolist()
+            # session['user_song_values']=full_reco_df.to_json(orient='split')
             #END LAMBDA FUNCTION
+
+            session['reco_df']=response_data['reco_df']
+            session['user_song_values']=response_data['user_song_values']
 
             return get_render_vars()
 
